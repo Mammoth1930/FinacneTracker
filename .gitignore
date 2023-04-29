@@ -2,3 +2,4 @@ data/*
 src/secrets.json
 src/server.py
 src/test.py
+src/__pycahce__/*
