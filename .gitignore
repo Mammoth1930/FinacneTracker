@@ -1,3 +1,4 @@
 data/*
 src/secrets.json
 src/server.py
+src/test.py

@@ -13,10 +13,10 @@ Params:
     sub_key: A key describing the specific type of secret looking to be returned
         e.g. password, PAT, ect.
 
-Return:
-    Returns the value of the specified secret from the .json file.
+Returns:
+    any: Returns the value of the specified secret from the .json file.
 """
-def get_secret(key: str, sub_key: str):
+def get_secret(key: str, sub_key: str) -> any:
     with open('./src/secrets.json') as f:
         data = json.load(f)
     return data[key][sub_key]

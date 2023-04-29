@@ -5,16 +5,13 @@ import plotly.express as px
 import pandas as pd
 from flask import Flask, request, abort
 
+from database import *
+from api import *
+
+# Create server to host the app
 server = Flask(__name__)
 
-@server.route("/webhook", methods=["POST"])
-def webhook():
-    if request.method == "POST":
-        print(request.json)
-        return "OK", 200
-    else:
-        abort(400)
-
+# Create the Plotly app
 app = dash.Dash(server=server)
 
 df = pd.read_csv(
@@ -36,4 +33,5 @@ app.layout = html.Div([dcc.Graph(id="life-exp-vs-gdp", figure=fig)])
 
 
 if __name__ == "__main__":
+    db_init()
     app.run_server(debug=True)

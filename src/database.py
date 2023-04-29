@@ -4,6 +4,7 @@ database used to store all of the financial data for the dashboard.
 """
 
 import sqlite3
+import pandas as pd
 
 # SQLite3 database file name
 DB_FILE = "finance.db"
@@ -75,3 +76,29 @@ def db_init():
         )
         '''
     )
+
+"""
+Executes an SQL query on the database and returns the result as a Pandas
+DataFrame. Expects the query to be a part of the DQL.
+
+Params:
+    query: A string representing the SQL query to be performed on the database.
+
+Returns:
+    pd.DataFrame: Result of the SQL query.
+"""
+def execute_query(query:str) -> pd.DataFrame:
+    return pd.read_sql_query(query, DB_CONN)
+
+"""
+Upserts account information into the Accounts table in the database.
+
+Params:
+    data:
+"""
+def upsert_accounts(data:pd.DataFrame):
+    existing_accnts = execute_query('SELECT id FROM Accounts')
+
+    for i, row in data.iterrows():
+        if row['id'] in existing_accnts['id'].values:
+            pass
