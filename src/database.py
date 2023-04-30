@@ -27,6 +27,7 @@ def db_init():
             ownershipType TEXT,
             balance INTEGER,
             created TEXT,
+            deleted INTEGER DEFAULT 0
             PRIMARY KEY id
         )
         '''
@@ -54,13 +55,13 @@ def db_init():
             cardNumberSuffix INTEGER,
             settledAt TEXT,
             createdAt TEXT,
-            account TEXT,
-            transferAccount TEXT,
+            fromAccount TEXT,
+            toAccount TEXT,
             category TEXT,
             parentCategory TEXT
             PRIMARY KEY id,
-            FOREIGN KEY account REFERENCES Accounts(id),
-            FOREIGN KEY transferAccount REFERENCES Accounts(id)
+            FOREIGN KEY fromAccount REFERENCES Accounts(id),
+            FOREIGN KEY toAccount REFERENCES Accounts(id)
         )
         '''
     )
@@ -78,6 +79,22 @@ def db_init():
     )
 
 """
+Performs a database insert operation on a specified table.
+
+Params:
+    table: A string representing the name of the table the data is to be
+        inserted into. This can be the name of a table which does not exist,
+        however the function is intended to be used to append data to one of
+        the preexisting tables.
+
+    data: A Pandas DataFrame or Series containing the data to be inserted into
+        the specified table. The data should be formatted with the same schema
+        as the table it is being inserted into.
+"""
+def write_to_db(table:str, data:pd.NDFrame):
+    data.to_sql(table, DB_CONN, index=False, if_exists='append')
+
+"""
 Executes an SQL query on the database and returns the result as a Pandas
 DataFrame. Expects the query to be a part of the DQL.
 
@@ -91,7 +108,7 @@ def execute_query(query:str) -> pd.DataFrame:
     return pd.read_sql_query(query, DB_CONN)
 
 """
-Upserts account information into the Accounts table in the database.
+Changes the Accounts table to
 
 Params:
     data:
@@ -100,5 +117,34 @@ def upsert_accounts(data:pd.DataFrame):
     existing_accnts = execute_query('SELECT id FROM Accounts')
 
     for i, row in data.iterrows():
+        # If the account is already in the database we need to update
         if row['id'] in existing_accnts['id'].values:
-            pass
+            execute_query(
+                f'''
+                UPDATE TABLE Accounts
+                SET displayName = {row['displayName']},
+                    balance = {row['balance']}
+                WHERE id = {row['id']}
+                '''
+            )
+
+            # Drop the existing account so we can keep track of any existing accounts which are not in data
+            existing_accnts.drop(
+                existing_accnts.index[
+                    existing_accnts['id'] == row['id']
+                ].tolist()
+            )
+            continue
+
+        # Otherwise this is a new account and we need to insert it
+        write_to_db('Accounts', row)
+
+    # Any accounts left in existing_accounts must have been deleted
+    for i, row in existing_accnts.iterrows():
+        execute_query(
+            f'''
+            UPDATE TABLE Accounts
+            SET deleted = 1
+            WHERE id = {row['id']}
+            '''
+        )
