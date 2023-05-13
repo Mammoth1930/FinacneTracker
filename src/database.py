@@ -49,19 +49,20 @@ def db_init():
             boostProportion INTEGER,
             cashbackDesc TEXT,
             cashbackAmount INTEGER,
+            amount INTEGER,
             foreignCurrency TEXT,
             foreignAmount INTEGER,
             cardPurchaseMethod TEXT,
-            cardNumberSuffix INTEGER,
+            cardNumberSuffix TEXT,
             settledAt TEXT,
             createdAt TEXT,
-            fromAccount TEXT,
-            toAccount TEXT,
+            account TEXT,
+            transferAccount TEXT,
             category TEXT,
             parentCategory TEXT
             PRIMARY KEY id,
-            FOREIGN KEY fromAccount REFERENCES Accounts(id),
-            FOREIGN KEY toAccount REFERENCES Accounts(id)
+            FOREIGN KEY account REFERENCES Accounts(id),
+            FOREIGN KEY transferAccount REFERENCES Accounts(id)
         )
         '''
     )
@@ -108,10 +109,11 @@ def execute_query(query:str) -> pd.DataFrame:
     return pd.read_sql_query(query, DB_CONN)
 
 """
-Changes the Accounts table to
+Changes the Accounts table to reflect the provided state.
 
 Params:
-    data:
+    data: A Pandas DataFrame with the same schema as the Accounts table. This
+        DataFrame should reflect the most current state of accounts.
 """
 def upsert_accounts(data:pd.DataFrame):
     existing_accnts = execute_query('SELECT id FROM Accounts')
@@ -145,6 +147,13 @@ def upsert_accounts(data:pd.DataFrame):
             f'''
             UPDATE TABLE Accounts
             SET deleted = 1
+                balance = 0
             WHERE id = {row['id']}
             '''
         )
+
+"""
+
+"""
+def upsert_transactions():
+    pass
