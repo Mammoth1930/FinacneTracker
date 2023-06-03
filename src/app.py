@@ -31,4 +31,6 @@ app.layout = html.Div([dcc.Graph(id="life-exp-vs-gdp", figure=fig)])
 
 if __name__ == "__main__":
     db_init()
-    app.run(debug=True)
+    update_dataset()
+    # app.run(debug=True)
+    tables_to_csv()

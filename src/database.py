@@ -68,16 +68,16 @@ def db_init():
     )
 
     # Create the Tags table
-    DB_CONN.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS Tags (
-            id TEXT,
-            transaction TEXT,
-            PRIMARY KEY (id),
-            FOREIGN KEY (transaction) REFERENCES Transactions(id)
-        )
-        '''
-    )
+    # DB_CONN.execute(
+    #     '''
+    #     CREATE TABLE IF NOT EXISTS Tags (
+    #         id TEXT,
+    #         transaction TEXT,
+    #         PRIMARY KEY (id),
+    #         FOREIGN KEY (transaction) REFERENCES Transactions(id)
+    #     )
+    #     '''
+    # )
 
 """
 Performs a database insert operation on a specified table.
@@ -92,7 +92,7 @@ Params:
         the specified table. The data should be formatted with the same schema
         as the table it is being inserted into.
 """
-def write_to_db(table:str, data: pd.Series | pd.DataFrame):
+def write_to_db(table:str, data: pd.DataFrame):
     data.to_sql(table, DB_CONN, index=False, if_exists='append')
 
 """
@@ -105,8 +105,11 @@ Params:
 Returns:
     pd.DataFrame: Result of the SQL query.
 """
-def execute_query(query:str) -> pd.DataFrame:
+def read_database(query:str) -> pd.DataFrame:
     return pd.read_sql_query(query, DB_CONN)
+
+def execute_query(query: str) -> None:
+    DB_CONN.execute(query)
 
 """
 Changes the Accounts table to reflect the provided state.
@@ -115,18 +118,18 @@ Params:
     data: A Pandas DataFrame with the same schema as the Accounts table. This
         DataFrame should reflect the most current state of accounts.
 """
-def upsert_accounts(data:pd.DataFrame):
-    existing_accnts = execute_query('SELECT id FROM Accounts')
+def upsert_accounts(data: pd.DataFrame):
+    existing_accnts = read_database('SELECT id FROM Accounts')
 
     for i, row in data.iterrows():
         # If the account is already in the database we need to update
         if row['id'] in existing_accnts['id'].values:
             execute_query(
                 f'''
-                UPDATE TABLE Accounts
-                SET displayName = {row['displayName']},
+                UPDATE Accounts
+                SET displayName = "{row['displayName']}",
                     balance = {row['balance']}
-                WHERE id = {row['id']}
+                WHERE id = "{row['id']}"
                 '''
             )
 
@@ -139,16 +142,21 @@ def upsert_accounts(data:pd.DataFrame):
             continue
 
         # Otherwise this is a new account and we need to insert it
-        write_to_db('Accounts', row)
+        execute_query(
+            f'''
+            INSERT INTO Accounts (id, displayName, accountType, ownershipType, balance, created)
+            VALUES ("{row['id']}", "{row['displayName']}", "{row['accountType']}", "{row['ownershipType']}", {row['balance']}, "{row['created']}")
+            '''
+        )
 
     # Any accounts left in existing_accounts must have been deleted
     for i, row in existing_accnts.iterrows():
         execute_query(
             f'''
-            UPDATE TABLE Accounts
+            UPDATE Accounts
             SET deleted = 1,
                 balance = 0
-            WHERE id = {row['id']}
+            WHERE id = "{row['id']}"
             '''
         )
 
@@ -178,13 +186,13 @@ def upsert_transactions(data: pd.DataFrame, new: bool) -> None:
     for i, row in data.iterrows():
         execute_query(
             f'''
-            UPDATE TABLE Transactions
-            SET status = {row['status']},
-                cashbackDesc = {row['cashbackDesc']},
-                cashbackAmount = {row['cashbackAmount']},
-                settledAt = {row['settledAt']},
-                category = {row['category']},
-                parentCategory = {row['parentCategory']}
-            WHERE id = {row['id']}
+            UPDATE Transactions
+            SET status = "{row['status']}",
+                cashbackDesc = "{row['cashbackDesc']}",
+                cashbackAmount = "{row['cashbackAmount']}",
+                settledAt = "{row['settledAt']}",
+                category = "{row['category']}",
+                parentCategory = "{row['parentCategory']}"
+            WHERE id = "{row['id']}"
             '''
         )

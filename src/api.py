@@ -1,10 +1,9 @@
 import requests
-import json
 import pandas as pd
 
 from handleSecrets import *
 from database import *
-from helpers import remove_emojis
+from helpers import remove_emojis, add_second
 
 # Base URI for the Up banking API
 BASE_URI = "https://api.up.com.au/api/v1/"
@@ -35,10 +34,10 @@ def parse_accounts_json(res: dict) -> pd.DataFrame:
         accounts.append([
             account['id'],
             remove_emojis(account['attributes']['displayName']),
-            account['attribute']['accountType'],
-            account['attribute']['ownershipType'],
-            account['balance']['valueInBaseUnits'],
-            account['createdAt']
+            account['attributes']['accountType'],
+            account['attributes']['ownershipType'],
+            account['attributes']['balance']['valueInBaseUnits'],
+            account['attributes']['createdAt']
         ])
 
     return pd.DataFrame(accounts, columns=[
@@ -74,6 +73,7 @@ def parse_transactions_json(res: dict) -> pd.DataFrame:
         is_categorizable = transaction['attributes']['isCategorizable']
         been_held = transaction['attributes']['holdInfo'] is not None
         round_up = transaction['attributes']['roundUp'] is not None
+        boost_portion = round_up and transaction['attributes']['roundUp']['boostPortion'] is not None
         cash_back = transaction['attributes']['cashback'] is not None
         foreign = transaction['attributes']['foreignAmount'] is not None
         card_purchase = transaction['attributes']['cardPurchaseMethod'] is not None
@@ -90,10 +90,10 @@ def parse_transactions_json(res: dict) -> pd.DataFrame:
             1 if been_held else 0,
             transaction['attributes']['holdInfo']['amount']['valueInBaseUnits'] if been_held else None,
             transaction['attributes']['roundUp']['amount']['valueInBaseUnits'] if round_up else None,
-            transaction['attributes']['roundUp']['boostPortion']['valueInBaseUnits'] if round_up else None,
+            transaction['attributes']['roundUp']['boostPortion']['valueInBaseUnits'] if boost_portion else None,
             transaction['attributes']['cashback']['description'] if cash_back else None,
             transaction['attributes']['cashback']['amount']['valueInBaseUnits'] if cash_back else None,
-            transaction['attributes']['amount'],
+            transaction['attributes']['amount']['valueInBaseUnits'],
             transaction['attributes']['foreignAmount']['currencyCode'] if foreign else None,
             transaction['attributes']['foreignAmount']['valueInBaseUnits'] if foreign else None,
             transaction['attributes']['cardPurchaseMethod']['method'] if card_purchase else None,
@@ -160,6 +160,7 @@ def parse_transaction_json(res: dict) -> pd.DataFrame:
     is_categorizable = transaction['attributes']['isCategorizable']
     been_held = transaction['attributes']['holdInfo'] is not None
     round_up = transaction['attributes']['roundUp'] is not None
+    boost_portion = round_up and transaction['attributes']['roundUp']['boostPortion'] is not None
     cash_back = transaction['attributes']['cashback'] is not None
     foreign = transaction['attributes']['foreignAmount'] is not None
     card_purchase = transaction['attributes']['cardPurchaseMethod'] is not None
@@ -174,13 +175,12 @@ def parse_transaction_json(res: dict) -> pd.DataFrame:
         transaction['attributes']['message'],
         1 if is_categorizable else 0,
         1 if been_held else 0,
-        # ToDo: Test that this actually works I have a feeling that it will still throw an error
         transaction['attributes']['holdInfo']['amount']['valueInBaseUnits'] if been_held else None,
         transaction['attributes']['roundUp']['amount']['valueInBaseUnits'] if round_up else None,
-        transaction['attributes']['roundUp']['boostPortion']['valueInBaseUnits'] if round_up else None,
+        transaction['attributes']['roundUp']['boostPortion']['valueInBaseUnits'] if boost_portion else None,
         transaction['attributes']['cashback']['description'] if cash_back else None,
         transaction['attributes']['cashback']['amount']['valueInBaseUnits'] if cash_back else None,
-        transaction['attributes']['amount'],
+        transaction['attributes']['amount']['valueInBaseUnits'],
         transaction['attributes']['foreignAmount']['currencyCode'] if foreign else None,
         transaction['attributes']['foreignAmount']['valueInBaseUnits'] if foreign else None,
         transaction['attributes']['cardPurchaseMethod']['method'] if card_purchase else None,
@@ -249,7 +249,7 @@ Returns:
     None: None is returned if any of the API requests returns a status code !=
         200 or if the provided endpoint is not one of the required values.
 """
-def get_from_api(endpoint: str, payload: dict={}) -> pd.DataFrame | None:
+def get_from_api(endpoint: str, payload: dict[str, str]={}) -> pd.DataFrame | None:
     url = BASE_URI+endpoint
     final_table = None
     
@@ -303,7 +303,13 @@ def update_dataset() -> None:
 
     # Update transaction information
     # Get all transactions that have happened since last sync
-    latest_trans_date = execute_query("SELECT MAX(createdAt) FROM Transactions").iloc[0][0]
+    latest_trans_date = read_database("SELECT MAX(createdAt) FROM Transactions").iloc[0][0]
+    
+    if latest_trans_date is None: # If the database is empty
+        latest_trans_date = "1900-01-01T00:00:00+10:00"
+    else: # Otherwise we need to add 1 sec because API filter is inclusive
+        add_second(latest_trans_date)
+
     transactions = get_from_api(
         'transactions',
         {'filter[since]': latest_trans_date}
@@ -313,12 +319,12 @@ def update_dataset() -> None:
         upsert_transactions(transactions, True)
 
     # Get all transactions that may have changed/updated
-    change_ids = execute_query(
+    change_ids = read_database(
         f'''
         SELECT id 
         FROM Transactions 
         WHERE (Status != "SETTLED" OR category IS NULL)
-            AND createdAt < {latest_trans_date}
+            AND createdAt < "{latest_trans_date}"
         '''
     )
 
@@ -329,6 +335,21 @@ def update_dataset() -> None:
             upsert_transactions(change_trans, False)
 
     # ToDo: Update tag information
+
+"""
+Writes all the tables in the database to separate .csv files, this is primary
+intended for debugging purposes.
+"""
+def tables_to_csv() -> None:
+    # Accounts
+    accounts_df = read_database('SELECT * FROM Accounts')
+    accounts_df.to_csv('./data/accounts.csv')
+
+    # Transactions
+    transactions_df = read_database('SELECT * FROM Transactions')
+    transactions_df.to_csv('./data/transactions.csv')
+
+    # ToDo: Tags
 
 
 # Get access token
