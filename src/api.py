@@ -26,7 +26,7 @@ Returns:
         table from the database. This DataFrame will contain all relevant
         account information from the API response JSON.
 """
-def parse_accounts_json(res:dict) -> pd.DataFrame:
+def parse_accounts_json(res: dict) -> pd.DataFrame:
     # A 2D list containing the information for each individual account
     accounts = []
 
@@ -51,9 +51,21 @@ def parse_accounts_json(res:dict) -> pd.DataFrame:
         ])
 
 """
+Parses a JSON containing information about several transactions.
 
+Params:
+    res: The JSON response containing the transactional information.
+
+Require:
+    res: Must be in the expected multi transaction format as described in the
+        Up banking API documentation.
+
+Returns:
+    DataFrame: A pandas DataFrame with the same schema as the Transactions table
+        from the database. This DataFrame contains all of the information
+        extracted from the JSON response.
 """
-def parse_transactions_json(res:dict) -> pd.DataFrame:
+def parse_transactions_json(res: dict) -> pd.DataFrame:
     # A 2D list containing the information for each individual transaction
     transactions = []
 
@@ -76,14 +88,14 @@ def parse_transactions_json(res:dict) -> pd.DataFrame:
             transaction['attributes']['message'],
             1 if is_categorizable else 0,
             1 if been_held else 0,
-            transaction['attributes']['holdInfo']['amount']['valueInBaseUnits'] if been_held else 0,
-            transaction['attributes']['roundUp']['amount']['valueInBaseUnits'] if round_up else 0,
-            transaction['attributes']['roundUp']['boostPortion']['valueInBaseUnits'] if round_up else 0,
+            transaction['attributes']['holdInfo']['amount']['valueInBaseUnits'] if been_held else None,
+            transaction['attributes']['roundUp']['amount']['valueInBaseUnits'] if round_up else None,
+            transaction['attributes']['roundUp']['boostPortion']['valueInBaseUnits'] if round_up else None,
             transaction['attributes']['cashback']['description'] if cash_back else None,
-            transaction['attributes']['cashback']['amount']['valueInBaseUnits'] if cash_back else 0,
+            transaction['attributes']['cashback']['amount']['valueInBaseUnits'] if cash_back else None,
             transaction['attributes']['amount'],
             transaction['attributes']['foreignAmount']['currencyCode'] if foreign else None,
-            transaction['attributes']['foreignAmount']['valueInBaseUnits'] if foreign else 0,
+            transaction['attributes']['foreignAmount']['valueInBaseUnits'] if foreign else None,
             transaction['attributes']['cardPurchaseMethod']['method'] if card_purchase else None,
             transaction['attributes']['cardPurchaseMethod']['cardNumberSuffix'] if card_purchase else None,
             transaction['attributes']['settledAt'],
@@ -122,50 +134,66 @@ def parse_transactions_json(res:dict) -> pd.DataFrame:
     ])
 
 """
+Parses a JSON containing information about a single transactions.
 
+Params:
+    res: The JSON response containing information regarding the transaction.
+
+Require:
+    res: Must be in the expected single transaction format as described in the
+        Up banking API documentation.
+
+Returns:
+    DataFrame: A pandas DataFrame with the same schema as the Transactions table
+        from the database. This DataFrame contains all of the information
+        extracted from the JSON response.
 """
-def parse_transaction_json(res:dict) -> pd.DataFrame:
-    # A 2D list containing the information for each individual transaction
-    transactions = []
+def parse_transaction_json(res: dict) -> pd.DataFrame:
+    # A 2D list containing all the information about this transaction
+    data = []
 
-    # Extract the data for each transaction as a list and append it to the transactions list
-    for transaction in res['data']:
-        is_categorizable = transaction['attributes']['isCategorizable']
-        been_held = transaction['attributes']['holdInfo'] is not None
-        round_up = transaction['attributes']['roundUp'] is not None
-        cash_back = transaction['attributes']['cashback'] is not None
-        foreign = transaction['attributes']['foreignAmount'] is not None
-        card_purchase = transaction['attributes']['cardPurchaseMethod'] is not None
-        transfer_account = transaction['relationships']['transferAccount']['data'] is not None
-        has_category = transaction['relationships']['category']['data'] is not None
+    # Extract the data for this transaction
+    transaction = res['data']
 
-        transactions.append([
-            transaction['id'],
-            transaction['attributes']['status'],
-            transaction['attributes']['rawText'],
-            transaction['attributes']['description'],
-            transaction['attributes']['message'],
-            1 if is_categorizable else 0,
-            1 if been_held else 0,
-            transaction['attributes']['holdInfo']['amount']['valueInBaseUnits'] if been_held else 0,
-            transaction['attributes']['roundUp']['amount']['valueInBaseUnits'] if round_up else 0,
-            transaction['attributes']['roundUp']['boostPortion']['valueInBaseUnits'] if round_up else 0,
-            transaction['attributes']['cashback']['description'] if cash_back else None,
-            transaction['attributes']['cashback']['amount']['valueInBaseUnits'] if cash_back else 0,
-            transaction['attributes']['amount'],
-            transaction['attributes']['foreignAmount']['currencyCode'] if foreign else None,
-            transaction['attributes']['foreignAmount']['valueInBaseUnits'] if foreign else 0,
-            transaction['attributes']['cardPurchaseMethod']['method'] if card_purchase else None,
-            transaction['attributes']['cardPurchaseMethod']['cardNumberSuffix'] if card_purchase else None,
-            transaction['attributes']['settledAt'],
-            transaction['attributes']['createdAt'],
-            transaction['relationships']['account']['data']['id'],
-            transaction['relationships']['transferAccount']['data']['id'] if transfer_account else None,
-            transaction['relationships']['category']['data']['id'] if has_category else None,
-            transaction['relationships']['parentCategory']['data']['id'] if has_category else None
-        ])
+    # For nullable fields in the JSON response may not show up so these booleans
+    # check whether the field is NULL to avoid indexing errors in the mapping
+    is_categorizable = transaction['attributes']['isCategorizable']
+    been_held = transaction['attributes']['holdInfo'] is not None
+    round_up = transaction['attributes']['roundUp'] is not None
+    cash_back = transaction['attributes']['cashback'] is not None
+    foreign = transaction['attributes']['foreignAmount'] is not None
+    card_purchase = transaction['attributes']['cardPurchaseMethod'] is not None
+    transfer_account = transaction['relationships']['transferAccount']['data'] is not None
+    has_category = transaction['relationships']['category']['data'] is not None
+
+    data.append([
+        transaction['id'],
+        transaction['attributes']['status'],
+        transaction['attributes']['rawText'],
+        transaction['attributes']['description'],
+        transaction['attributes']['message'],
+        1 if is_categorizable else 0,
+        1 if been_held else 0,
+        # ToDo: Test that this actually works I have a feeling that it will still throw an error
+        transaction['attributes']['holdInfo']['amount']['valueInBaseUnits'] if been_held else None,
+        transaction['attributes']['roundUp']['amount']['valueInBaseUnits'] if round_up else None,
+        transaction['attributes']['roundUp']['boostPortion']['valueInBaseUnits'] if round_up else None,
+        transaction['attributes']['cashback']['description'] if cash_back else None,
+        transaction['attributes']['cashback']['amount']['valueInBaseUnits'] if cash_back else None,
+        transaction['attributes']['amount'],
+        transaction['attributes']['foreignAmount']['currencyCode'] if foreign else None,
+        transaction['attributes']['foreignAmount']['valueInBaseUnits'] if foreign else None,
+        transaction['attributes']['cardPurchaseMethod']['method'] if card_purchase else None,
+        transaction['attributes']['cardPurchaseMethod']['cardNumberSuffix'] if card_purchase else None,
+        transaction['attributes']['settledAt'],
+        transaction['attributes']['createdAt'],
+        transaction['relationships']['account']['data']['id'],
+        transaction['relationships']['transferAccount']['data']['id'] if transfer_account else None,
+        transaction['relationships']['category']['data']['id'] if has_category else None,
+        transaction['relationships']['parentCategory']['data']['id'] if has_category else None
+    ])
     
-    return pd.DataFrame(transactions, columns=[
+    return pd.DataFrame(data, columns=[
         'id',
         'status',
         'rawText',
@@ -195,8 +223,8 @@ def parse_transaction_json(res:dict) -> pd.DataFrame:
 """
 
 """
-def parse_tags_json(res:dict) -> pd.DataFrame:
-    pass
+def parse_tags_json(res: dict) -> pd.DataFrame:
+    return pd.DataFrame() # ToDo: this method
 
 """
 Makes a GET request to the Up Banking API, parses the response, and returns a
@@ -209,7 +237,7 @@ Params:
 
     payload: A dictionary of parameters for the API request.
 
-Requires:
+Require:
     endpoint: The endpoint must be one of 'accounts', 'transactions', 
         'transactions/{id}', 'tags' otherwise None will be returned.
 
@@ -221,7 +249,7 @@ Returns:
     None: None is returned if any of the API requests returns a status code !=
         200 or if the provided endpoint is not one of the required values.
 """
-def get_from_api(endpoint: str, payload: dict={}) -> pd.DataFrame:
+def get_from_api(endpoint: str, payload: dict={}) -> pd.DataFrame | None:
     url = BASE_URI+endpoint
     final_table = None
     
@@ -235,7 +263,7 @@ def get_from_api(endpoint: str, payload: dict={}) -> pd.DataFrame:
                 f"There was an error when attempting to get the {endpoint[:-1]} information.\n" +
                 f"URL: {response.request.url}\n" +
                 f"Status: {response.status_code}\n"
-                f"Error: {response.args[0]}"
+                f"Error: {response.reason}"
             )
             return None
         
@@ -267,7 +295,7 @@ def get_from_api(endpoint: str, payload: dict={}) -> pd.DataFrame:
 Updates the database to contain all of the most recent information available via
 the API.
 """
-def update_dataset():
+def update_dataset() -> None:
     # Update account information
     accounts = get_from_api('accounts')
     if accounts is not None:
@@ -275,32 +303,32 @@ def update_dataset():
 
     # Update transaction information
     # Get all transactions that have happened since last sync
-    latest_trans_date = execute_query("SELECT MAX(createdAt) FROM Transactions")
+    latest_trans_date = execute_query("SELECT MAX(createdAt) FROM Transactions").iloc[0][0]
     transactions = get_from_api(
         'transactions',
-        {'filter[since]': latest_trans_date.iloc[0][0]}
+        {'filter[since]': latest_trans_date}
     )
 
     if transactions is not None:
-        upsert_transactions(transactions)
+        upsert_transactions(transactions, True)
 
     # Get all transactions that may have changed/updated
-    held_trans = execute_query(
-        '''
+    change_ids = execute_query(
+        f'''
         SELECT id 
         FROM Transactions 
-        WHERE Status != "SETTLED"
-            OR category IS NULL
+        WHERE (Status != "SETTLED" OR category IS NULL)
+            AND createdAt < {latest_trans_date}
         '''
     )
 
-    for i, row in held_trans.iterrows():
-        transactions = get_from_api(f"transactions/{row['id']}")
+    for i, row in change_ids.iterrows():
+        change_trans = get_from_api(f"transactions/{row['id']}")
 
-        if transactions is not None:
-            upsert_transactions()
+        if change_trans is not None:
+            upsert_transactions(change_trans, False)
 
-    # Update tag information
+    # ToDo: Update tag information
 
 
 # Get access token

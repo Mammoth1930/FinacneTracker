@@ -92,7 +92,7 @@ Params:
         the specified table. The data should be formatted with the same schema
         as the table it is being inserted into.
 """
-def write_to_db(table:str, data:pd.NDFrame):
+def write_to_db(table:str, data: pd.Series | pd.DataFrame):
     data.to_sql(table, DB_CONN, index=False, if_exists='append')
 
 """
@@ -130,7 +130,7 @@ def upsert_accounts(data:pd.DataFrame):
                 '''
             )
 
-            # Drop the existing account so we can keep track of any existing accounts which are not in data
+            # Drop the existing account so we can check for deleted accounts
             existing_accnts.drop(
                 existing_accnts.index[
                     existing_accnts['id'] == row['id']
@@ -146,14 +146,45 @@ def upsert_accounts(data:pd.DataFrame):
         execute_query(
             f'''
             UPDATE TABLE Accounts
-            SET deleted = 1
+            SET deleted = 1,
                 balance = 0
             WHERE id = {row['id']}
             '''
         )
 
 """
+Upserts the Transaction table in the database to reflect changes to transactions
+in the provided DataFrame.
 
+Params:
+    data: A DataFrame containing the transactions to be upserted to the
+        transactions table in the database.
+
+    new: A boolean flag which is True if all the transactions provided are new
+        transactions which don't already exist in the Transactions table and
+        False if all the transactions provided already exist in the table.
+
+Require:
+    data: Must contain only new or not new transactions, there cannot be a
+        mixture of transactions which do and don't exist in the database.
 """
-def upsert_transactions():
-    pass
+def upsert_transactions(data: pd.DataFrame, new: bool) -> None:
+    # New transactions we can simply insert
+    if new:
+        write_to_db('Transactions', data)
+        return
+    
+    # If the transactions are existing we need to update
+    for i, row in data.iterrows():
+        execute_query(
+            f'''
+            UPDATE TABLE Transactions
+            SET status = {row['status']},
+                cashbackDesc = {row['cashbackDesc']},
+                cashbackAmount = {row['cashbackAmount']},
+                settledAt = {row['settledAt']},
+                category = {row['category']},
+                parentCategory = {row['parentCategory']}
+            WHERE id = {row['id']}
+            '''
+        )

@@ -4,6 +4,7 @@ This file contains functions used for handling secrets stored in
 """
 
 import json
+from typing import Any
 
 """
 Retrieves a secret from the secrets.json file.
@@ -16,7 +17,7 @@ Params:
 Returns:
     any: Returns the value of the specified secret from the .json file.
 """
-def get_secret(key: str, sub_key: str) -> any:
+def get_secret(key: str, sub_key: str) -> Any:
     with open('./src/secrets.json') as f:
         data = json.load(f)
     return data[key][sub_key]

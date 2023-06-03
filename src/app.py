@@ -12,7 +12,7 @@ from api import *
 server = Flask(__name__)
 
 # Create the Plotly app
-app = dash.Dash(server=server)
+app = dash.Dash(server=False)
 
 df = pd.read_csv(
     "https://raw.githubusercontent.com/ThuwarakeshM/geting-started-with-plottly-dash/main/life_expectancy.csv"
@@ -33,5 +33,6 @@ app.layout = html.Div([dcc.Graph(id="life-exp-vs-gdp", figure=fig)])
 
 
 if __name__ == "__main__":
-    db_init()
+    # db_init()
+    app.init_app(server)
     app.run_server(debug=True)
