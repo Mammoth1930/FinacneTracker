@@ -27,8 +27,8 @@ def db_init():
             ownershipType TEXT,
             balance INTEGER,
             created TEXT,
-            deleted INTEGER DEFAULT 0
-            PRIMARY KEY id
+            deleted INTEGER DEFAULT 0,
+            PRIMARY KEY (id)
         )
         '''
     )
@@ -40,7 +40,7 @@ def db_init():
             id TEXT,
             status TEXT,
             rawText TEXT,
-            description TEXT
+            description TEXT,
             message TEXT,
             isCategorizable INTEGER,
             held INTEGER,
@@ -59,10 +59,10 @@ def db_init():
             account TEXT,
             transferAccount TEXT,
             category TEXT,
-            parentCategory TEXT
-            PRIMARY KEY id,
-            FOREIGN KEY account REFERENCES Accounts(id),
-            FOREIGN KEY transferAccount REFERENCES Accounts(id)
+            parentCategory TEXT,
+            PRIMARY KEY (id),
+            FOREIGN KEY (account) REFERENCES Accounts(id),
+            FOREIGN KEY (transferAccount) REFERENCES Accounts(id)
         )
         '''
     )
@@ -73,8 +73,8 @@ def db_init():
         CREATE TABLE IF NOT EXISTS Tags (
             id TEXT,
             transaction TEXT,
-            PRIMARY KEY id,
-            FOREIGN KEY transaction REFERENCES Transactions(id)
+            PRIMARY KEY (id),
+            FOREIGN KEY (transaction) REFERENCES Transactions(id)
         )
         '''
     )

@@ -332,10 +332,10 @@ def update_dataset() -> None:
 
 
 # Get access token
-access_token = get_secret('Up', 'PAT')
+# access_token = get_secret('Up', 'PAT')
 
-headers = {'Authorization': f'Bearer {access_token}'}
+# headers = {'Authorization': f'Bearer {access_token}'}
 
-response = requests.get('https://api.up.com.au/api/v1/util/ping', headers=headers)
+# response = requests.get('https://api.up.com.au/api/v1/util/ping', headers=headers)
 
-print(response.json())
+# print(response.json())
