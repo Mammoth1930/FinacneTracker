@@ -3,4 +3,4 @@ src/secrets.json
 src/server.py
 src/test.py
 src/__pycache__/*
-*.db
+*.db*

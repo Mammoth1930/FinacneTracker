@@ -269,21 +269,27 @@ def get_from_api(endpoint: str, payload: dict[str, str]={}) -> pd.DataFrame | No
         
         # Parse response
         if endpoint == 'accounts':
-            final_table = parse_accounts_json(response.json())
+            parsed_response = parse_accounts_json(response.json())
 
         elif endpoint == 'transactions' and '/' in endpoint:
-            final_table = parse_transaction_json(response.json())
+            parsed_response = parse_transaction_json(response.json())
 
         elif endpoint == 'transactions':
-            final_table = parse_transactions_json(response.json())
+            parsed_response = parse_transactions_json(response.json())
 
         elif endpoint == 'tags':
-            final_table = parse_tags_json(response.json())
+            parsed_response = parse_tags_json(response.json())
 
         else:
             # Provided endpoint isn't what is expected
             print(f"ERROR! {endpoint} is not one of the expected endpoints.")
             return None
+        
+        if final_table is None:
+            final_table = parsed_response
+
+        else:
+            final_table = pd.concat([final_table, parsed_response], ignore_index=True)
         
         # Get the continuation url if it exists
         url = response.json()['links']['next']
@@ -337,17 +343,17 @@ def update_dataset() -> None:
     # ToDo: Update tag information
 
 """
-Writes all the tables in the database to separate .csv files, this is primary
+Writes all the tables in the database to separate .csv files, this is primarily
 intended for debugging purposes.
 """
 def tables_to_csv() -> None:
     # Accounts
     accounts_df = read_database('SELECT * FROM Accounts')
-    accounts_df.to_csv('./data/accounts.csv')
+    accounts_df.to_csv('./data/accounts.csv', index=False)
 
     # Transactions
     transactions_df = read_database('SELECT * FROM Transactions')
-    transactions_df.to_csv('./data/transactions.csv')
+    transactions_df.to_csv('./data/transactions.csv', index=False)
 
     # ToDo: Tags
 
