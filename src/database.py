@@ -12,10 +12,10 @@ DB_FILE = "finance.db"
 # Create a connection to the database
 DB_CONN = sqlite3.connect(DB_FILE)
 
-"""
-Creates the database tables if they don't already exist.
-"""
 def db_init():
+    """
+    Creates the database tables if they don't already exist.
+    """
 
     # Create the Accounts table
     DB_CONN.execute(
@@ -79,46 +79,55 @@ def db_init():
     #     '''
     # )
 
-"""
-Performs a database insert operation on a specified table.
-
-Params:
-    table: A string representing the name of the table the data is to be
-        inserted into. This can be the name of a table which does not exist,
-        however the function is intended to be used to append data to one of
-        the preexisting tables.
-
-    data: A Pandas DataFrame or Series containing the data to be inserted into
-        the specified table. The data should be formatted with the same schema
-        as the table it is being inserted into.
-"""
 def write_to_db(table:str, data: pd.DataFrame):
+    """
+    Performs a database insert operation on a specified table.
+
+    Params:
+        table: A string representing the name of the table the data is to be
+            inserted into. This can be the name of a table which does not exist,
+            however the function is intended to be used to append data to one of
+            the preexisting tables.
+
+        data: A Pandas DataFrame or Series containing the data to be inserted into
+            the specified table. The data should be formatted with the same schema
+            as the table it is being inserted into.
+    """
+
     data.to_sql(table, DB_CONN, index=False, if_exists='append')
 
-"""
-Executes an SQL query on the database and returns the result as a Pandas
-DataFrame. Expects the query to be a part of the DQL.
-
-Params:
-    query: A string representing the SQL query to be performed on the database.
-
-Returns:
-    pd.DataFrame: Result of the SQL query.
-"""
 def read_database(query:str) -> pd.DataFrame:
+    """
+    Executes an SQL SELECT query on the database and returns the result as a Pandas
+    DataFrame. Expects the query to be a part of the DQL.
+
+    Params:
+        query: A string representing the SQL query to be performed on the database.
+
+    Returns:
+        pd.DataFrame: Result of the SQL query.
+    """
+
     return pd.read_sql_query(query, DB_CONN)
 
 def execute_query(query: str) -> None:
+    """
+    Executes a DML or DDL SQL query on the database.
+
+    Params:
+        query: A string representing the SQL query to be performed on the database.
+    """
     DB_CONN.execute(query)
 
-"""
-Changes the Accounts table to reflect the provided state.
-
-Params:
-    data: A Pandas DataFrame with the same schema as the Accounts table. This
-        DataFrame should reflect the most current state of accounts.
-"""
 def upsert_accounts(data: pd.DataFrame):
+    """
+    Changes the Accounts table to reflect the provided state.
+
+    Params:
+        data: A Pandas DataFrame with the same schema as the Accounts table. This
+            DataFrame should reflect the most current state of accounts.
+    """
+
     existing_accnts = read_database('SELECT id FROM Accounts')
 
     for i, row in data.iterrows():
@@ -160,23 +169,24 @@ def upsert_accounts(data: pd.DataFrame):
             '''
         )
 
-"""
-Upserts the Transaction table in the database to reflect changes to transactions
-in the provided DataFrame.
-
-Params:
-    data: A DataFrame containing the transactions to be upserted to the
-        transactions table in the database.
-
-    new: A boolean flag which is True if all the transactions provided are new
-        transactions which don't already exist in the Transactions table and
-        False if all the transactions provided already exist in the table.
-
-Require:
-    data: Must contain only new or not new transactions, there cannot be a
-        mixture of transactions which do and don't exist in the database.
-"""
 def upsert_transactions(data: pd.DataFrame, new: bool) -> None:
+    """
+    Upserts the Transaction table in the database to reflect changes to transactions
+    in the provided DataFrame.
+
+    Params:
+        data: A DataFrame containing the transactions to be upserted to the
+            transactions table in the database.
+
+        new: A boolean flag which is True if all the transactions provided are new
+            transactions which don't already exist in the Transactions table and
+            False if all the transactions provided already exist in the table.
+
+    Require:
+        data: Must contain only new or not new transactions, there cannot be a
+            mixture of transactions which do and don't exist in the database.
+    """
+
     # New transactions we can simply insert
     if new:
         write_to_db('Transactions', data)

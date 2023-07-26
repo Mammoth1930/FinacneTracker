@@ -6,18 +6,19 @@ the other files.
 import re
 import datetime
 
-"""
-Removes all emojies and leading/trailing whitespace from a string.
-
-Params:
-    text: The string from which the emojies and whitespace is to be removed.
-
-Returns:
-    str: The provided string with all emojies and leading/trailing whitespace
-        removed.
-"""
 def remove_emojis(text: str) -> str:
-    emoj = re.compile("["
+    """
+    Removes all emojies and leading/trailing whitespace from a string.
+
+    Params:
+        text: The string from which the emojies and whitespace is to be removed.
+
+    Returns:
+        str: The provided string with all emojies and leading/trailing whitespace
+            removed.
+    """
+
+    emoji = re.compile("["
     u"\U0001F600-\U0001F64F"  # emoticons
     u"\U0001F300-\U0001F5FF"  # symbols & pictographs
     u"\U0001F680-\U0001F6FF"  # transport & map symbols
@@ -38,7 +39,7 @@ def remove_emojis(text: str) -> str:
     u"\u3030"
                     "]+", re.UNICODE)
 
-    return re.sub(emoj, '', text).strip()
+    return re.sub(emoji, '', text).strip()
 
 def add_second(datetime_string: str|None) -> str|None:
   """
@@ -51,6 +52,7 @@ Params:
 Returns:
     The datetime string with 1 second added or None if datetime_string is None.
 """
+
   if datetime_string is None:
      return None
   

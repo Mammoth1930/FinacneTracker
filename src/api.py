@@ -14,18 +14,19 @@ PAT = get_secret('Up', 'PAT')
 # Authorization header for Up API
 AUTH_HEADER = {'Authorization': f'Bearer {PAT}'}
 
-"""
-Parses the JSON response provided by the Up banking Accounts API.
-
-Params:
-    res: A dictionary representing the JSON response provided by the API.
-
-Returns:
-    pd.DataFrame: A Pandas DataFrame with the same schema as the Accounts
-        table from the database. This DataFrame will contain all relevant
-        account information from the API response JSON.
-"""
 def parse_accounts_json(res: dict) -> pd.DataFrame:
+    """
+    Parses the JSON response provided by the Up banking Accounts API.
+
+    Params:
+        res: A dictionary representing the JSON response provided by the API.
+
+    Returns:
+        pd.DataFrame: A Pandas DataFrame with the same schema as the Accounts
+            table from the database. This DataFrame will contain all relevant
+            account information from the API response JSON.
+    """
+
     # A 2D list containing the information for each individual account
     accounts = []
 
@@ -49,22 +50,23 @@ def parse_accounts_json(res: dict) -> pd.DataFrame:
             'created'
         ])
 
-"""
-Parses a JSON containing information about several transactions.
-
-Params:
-    res: The JSON response containing the transactional information.
-
-Require:
-    res: Must be in the expected multi transaction format as described in the
-        Up banking API documentation.
-
-Returns:
-    DataFrame: A pandas DataFrame with the same schema as the Transactions table
-        from the database. This DataFrame contains all of the information
-        extracted from the JSON response.
-"""
 def parse_transactions_json(res: dict) -> pd.DataFrame:
+    """
+    Parses a JSON containing information about several transactions.
+
+    Params:
+        res: The JSON response containing the transactional information.
+
+    Require:
+        res: Must be in the expected multi transaction format as described in the
+            Up banking API documentation.
+
+    Returns:
+        DataFrame: A pandas DataFrame with the same schema as the Transactions table
+            from the database. This DataFrame contains all of the information
+            extracted from the JSON response.
+    """
+
     # A 2D list containing the information for each individual transaction
     transactions = []
 
@@ -133,22 +135,23 @@ def parse_transactions_json(res: dict) -> pd.DataFrame:
 
     ])
 
-"""
-Parses a JSON containing information about a single transactions.
-
-Params:
-    res: The JSON response containing information regarding the transaction.
-
-Require:
-    res: Must be in the expected single transaction format as described in the
-        Up banking API documentation.
-
-Returns:
-    DataFrame: A pandas DataFrame with the same schema as the Transactions table
-        from the database. This DataFrame contains all of the information
-        extracted from the JSON response.
-"""
 def parse_transaction_json(res: dict) -> pd.DataFrame:
+    """
+    Parses a JSON containing information about a single transactions.
+
+    Params:
+        res: The JSON response containing information regarding the transaction.
+
+    Require:
+        res: Must be in the expected single transaction format as described in the
+            Up banking API documentation.
+
+    Returns:
+        DataFrame: A pandas DataFrame with the same schema as the Transactions table
+            from the database. This DataFrame contains all of the information
+            extracted from the JSON response.
+    """
+
     # A 2D list containing all the information about this transaction
     data = []
 
@@ -220,36 +223,38 @@ def parse_transaction_json(res: dict) -> pd.DataFrame:
 
     ])
 
-"""
-
-"""
 def parse_tags_json(res: dict) -> pd.DataFrame:
+    """
+
+    """
+
     return pd.DataFrame() # ToDo: this method
 
-"""
-Makes a GET request to the Up Banking API, parses the response, and returns a
-DataFrame with the same schema as the corresponding database table.
-
-Params:
-    endpoint: The API endpoint that is being queried. Note that this should
-        only be the endpoint and not the entire URL and should NOT contain a
-        leading "/".
-
-    payload: A dictionary of parameters for the API request.
-
-Require:
-    endpoint: The endpoint must be one of 'accounts', 'transactions', 
-        'transactions/{id}', 'tags' otherwise None will be returned.
-
-Returns:
-    pd.DataFrame: A Pandas DataFrame containing the information provided by the
-        API response. This DataFrame will have the same schema as the database
-        table where all the information provided by this endpoint is stored.
-
-    None: None is returned if any of the API requests returns a status code !=
-        200 or if the provided endpoint is not one of the required values.
-"""
 def get_from_api(endpoint: str, payload: dict[str, str]={}) -> pd.DataFrame | None:
+    """
+    Makes a GET request to the Up Banking API, parses the response, and returns a
+    DataFrame with the same schema as the corresponding database table.
+
+    Params:
+        endpoint: The API endpoint that is being queried. Note that this should
+            only be the endpoint and not the entire URL and should NOT contain a
+            leading "/".
+
+        payload: A dictionary of parameters for the API request.
+
+    Require:
+        endpoint: The endpoint must be one of 'accounts', 'transactions', 
+            'transactions/{id}', 'tags' otherwise None will be returned.
+
+    Returns:
+        pd.DataFrame: A Pandas DataFrame containing the information provided by the
+            API response. This DataFrame will have the same schema as the database
+            table where all the information provided by this endpoint is stored.
+
+        None: None is returned if any of the API requests returns a status code !=
+            200 or if the provided endpoint is not one of the required values.
+    """
+
     url = BASE_URI+endpoint
     final_table = None
     
@@ -297,11 +302,12 @@ def get_from_api(endpoint: str, payload: dict[str, str]={}) -> pd.DataFrame | No
     return final_table
 
 
-"""
-Updates the database to contain all of the most recent information available via
-the API.
-"""
 def update_dataset() -> None:
+    """
+    Updates the database to contain all of the most recent information available via
+    the API.
+    """
+
     # Update account information
     accounts = get_from_api('accounts')
     if accounts is not None:
@@ -340,11 +346,12 @@ def update_dataset() -> None:
 
     # ToDo: Update tag information
 
-"""
-Writes all the tables in the database to separate .csv files, this is primarily
-intended for debugging purposes.
-"""
 def tables_to_csv() -> None:
+    """
+    Writes all the tables in the database to separate .csv files, this is primarily
+    intended for debugging purposes.
+    """
+
     # Accounts
     accounts_df = read_database('SELECT * FROM Accounts')
     accounts_df.to_csv('./data/accounts.csv', index=False)
