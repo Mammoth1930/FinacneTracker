@@ -308,13 +308,11 @@ def update_dataset() -> None:
         upsert_accounts(accounts)
 
     # Update transaction information
-    # Get all transactions that have happened since last sync
-    latest_trans_date = read_database("SELECT MAX(createdAt) FROM Transactions").iloc[0][0]
+    # Check to see when the database was last synced and add 1 sec because API filter is inclusive
+    latest_trans_date = add_second(read_database("SELECT MAX(createdAt) FROM Transactions").iloc[0][0])
     
     if latest_trans_date is None: # If the database is empty
         latest_trans_date = "1900-01-01T00:00:00+10:00"
-    else: # Otherwise we need to add 1 sec because API filter is inclusive
-        add_second(latest_trans_date)
 
     transactions = get_from_api(
         'transactions',

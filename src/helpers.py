@@ -40,16 +40,20 @@ def remove_emojis(text: str) -> str:
 
     return re.sub(emoj, '', text).strip()
 
-"""
+def add_second(datetime_string: str|None) -> str|None:
+  """
 Adds 1 second to the given datetime string and returns it as a string.
 
 Params:
-    datetime_string: The datetime string to add 1 second to.
+    datetime_string: The datetime string to add 1 second to. It should be of the
+        format "%Y-%m-%dT%H:%M:%S%z".
 
 Returns:
-    The datetime string with 1 second added.
+    The datetime string with 1 second added or None if datetime_string is None.
 """
-def add_second(datetime_string: str) -> str:
+  if datetime_string is None:
+     return None
+  
   datetime_object = datetime.datetime.strptime(datetime_string, "%Y-%m-%dT%H:%M:%S%z")
   new_datetime_object = datetime_object + datetime.timedelta(seconds=1)
   new_datetime_string = new_datetime_object.strftime("%Y-%m-%dT%H:%M:%S%z")
