@@ -14,7 +14,7 @@ PAT = get_secret('Up', 'PAT')
 # Authorization header for Up API
 AUTH_HEADER = {'Authorization': f'Bearer {PAT}'}
 
-def parse_accounts_json(res: dict) -> pd.DataFrame:
+def parse_accounts_json(res: dict[str, Any]) -> pd.DataFrame:
     """
     Parses the JSON response provided by the Up banking Accounts API.
 
@@ -50,7 +50,7 @@ def parse_accounts_json(res: dict) -> pd.DataFrame:
             'created'
         ])
 
-def parse_transactions_json(res: dict) -> pd.DataFrame:
+def parse_transactions_json(res: dict[str, Any]) -> pd.DataFrame:
     """
     Parses a JSON containing information about several transactions.
 
@@ -135,7 +135,7 @@ def parse_transactions_json(res: dict) -> pd.DataFrame:
 
     ])
 
-def parse_transaction_json(res: dict) -> pd.DataFrame:
+def parse_transaction_json(res: dict[str, Any]) -> pd.DataFrame:
     """
     Parses a JSON containing information about a single transactions.
 
