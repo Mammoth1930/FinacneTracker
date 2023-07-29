@@ -144,9 +144,8 @@ def upsert_accounts(data: pd.DataFrame):
 
             # Drop the existing account so we can check for deleted accounts
             existing_accnts.drop(
-                existing_accnts.index[
-                    existing_accnts['id'] == row['id']
-                ].tolist()
+                existing_accnts.index[existing_accnts['id'] == row['id']].tolist(),
+                inplace=True
             )
             continue
 
