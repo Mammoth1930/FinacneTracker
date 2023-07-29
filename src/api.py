@@ -1,3 +1,8 @@
+"""
+This file contains the logic for getting all of the data from the Up banking APIs
+and transforming it to be written to the database.
+"""
+
 import requests
 import pandas as pd
 
@@ -276,8 +281,8 @@ def get_from_api(endpoint: str, payload: dict[str, str]={}) -> pd.DataFrame | No
         if endpoint == 'accounts':
             parsed_response = parse_accounts_json(response.json())
 
-        elif endpoint == 'transactions' and '/' in endpoint:
-            parsed_response = parse_transaction_json(response.json())
+        elif 'transactions' in endpoint and '/' in endpoint:
+            return parse_transaction_json(response.json())
 
         elif endpoint == 'transactions':
             parsed_response = parse_transactions_json(response.json())
@@ -325,7 +330,7 @@ def update_dataset() -> None:
         {'filter[since]': latest_trans_date}
     )
 
-    if transactions is not None:
+    if transactions is not None and not transactions.empty:
         upsert_transactions(transactions, True)
 
     # Get all transactions that may have changed/updated
@@ -333,7 +338,24 @@ def update_dataset() -> None:
         f'''
         SELECT id 
         FROM Transactions 
-        WHERE (Status != "SETTLED" OR category IS NULL)
+        WHERE (
+                Status != "SETTLED"
+                OR (
+                    amount < 0
+                    AND category IS NULL
+                    AND id NOT IN (
+                        SELECT id
+                        FROM Transactions
+                        WHERE description LIKE "Transfer%"
+                            OR description LIKE "Quick save transfer%"
+                            OR description = "Round Up"
+                            OR description = "Interest"
+                            OR description LIKE "Cover to%"
+                            OR description LIKE "Forward to%"
+                            OR description LIKE "Auto Transfer to%"
+                    )
+                )
+            )
             AND createdAt < "{latest_trans_date}"
         '''
     )
@@ -357,7 +379,7 @@ def tables_to_csv() -> None:
     accounts_df.to_csv('./data/accounts.csv', index=False)
 
     # Transactions
-    transactions_df = read_database('SELECT * FROM Transactions')
+    transactions_df = read_database('SELECT * FROM Transactions ORDER BY createdAt DESC')
     transactions_df.to_csv('./data/transactions.csv', index=False)
 
     # ToDo: Tags

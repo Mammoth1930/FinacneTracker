@@ -59,5 +59,6 @@ Returns:
   datetime_object = datetime.datetime.strptime(datetime_string, "%Y-%m-%dT%H:%M:%S%z")
   new_datetime_object = datetime_object + datetime.timedelta(seconds=1)
   new_datetime_string = new_datetime_object.strftime("%Y-%m-%dT%H:%M:%S%z")
+  new_datetime_string = new_datetime_string[:-2] + ':' + new_datetime_string[-2:]
 
   return new_datetime_string
