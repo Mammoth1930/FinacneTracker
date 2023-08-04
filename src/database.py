@@ -5,79 +5,90 @@ database used to store all of the financial data for the dashboard.
 
 import sqlite3
 import pandas as pd
+from threading import Lock
 
 # SQLite3 database file name
 DB_FILE = "finance.db"
 
 # Create a connection to the database
-DB_CONN = sqlite3.connect(DB_FILE)
+DB_CONN = sqlite3.connect(DB_FILE, check_same_thread=False)
+
+# Write lock
+WRITE = Lock()
 
 def db_init():
     """
     Creates the database tables if they don't already exist.
     """
 
-    # Create the Accounts table
-    DB_CONN.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS Accounts (
-            id TEXT,
-            displayName TEXT,
-            accountType TEXT,
-            ownershipType TEXT,
-            balance INTEGER,
-            created TEXT,
-            deleted INTEGER DEFAULT 0,
-            PRIMARY KEY (id)
-        )
-        '''
-    )
+    with WRITE:
+        cur = DB_CONN.cursor()
 
-    # Create the Transactions table
-    DB_CONN.execute(
-        '''
-        CREATE TABLE IF NOT EXISTS Transactions (
-            id TEXT,
-            status TEXT,
-            rawText TEXT,
-            description TEXT,
-            message TEXT,
-            isCategorizable INTEGER,
-            held INTEGER,
-            heldAmount INTEGER,
-            roundUpAmount INTEGER,
-            boostProportion INTEGER,
-            cashbackDesc TEXT,
-            cashbackAmount INTEGER,
-            amount INTEGER,
-            foreignCurrency TEXT,
-            foreignAmount INTEGER,
-            cardPurchaseMethod TEXT,
-            cardNumberSuffix TEXT,
-            settledAt TEXT,
-            createdAt TEXT,
-            account TEXT,
-            transferAccount TEXT,
-            category TEXT,
-            parentCategory TEXT,
-            PRIMARY KEY (id),
-            FOREIGN KEY (account) REFERENCES Accounts(id),
-            FOREIGN KEY (transferAccount) REFERENCES Accounts(id)
+        # Create the Accounts table
+        cur.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS Accounts (
+                id TEXT,
+                displayName TEXT,
+                accountType TEXT,
+                ownershipType TEXT,
+                balance INTEGER,
+                created TEXT,
+                deleted INTEGER DEFAULT 0,
+                PRIMARY KEY (id)
+            )
+            '''
         )
-        '''
-    )
 
-    # Create the Tags table
-    # DB_CONN.execute(
-    #     '''
-    #     CREATE TABLE IF NOT EXISTS Tags (
-    #         id TEXT,
-    #         transaction TEXT,
-    #         PRIMARY KEY (id),
-    #         FOREIGN KEY (transaction) REFERENCES Transactions(id)
-    #     )
-    #     '''
-    # )
+        # Create the Transactions table
+        cur.execute(
+            '''
+            CREATE TABLE IF NOT EXISTS Transactions (
+                id TEXT,
+                status TEXT,
+                rawText TEXT,
+                description TEXT,
+                message TEXT,
+                isCategorizable INTEGER,
+                held INTEGER,
+                heldAmount INTEGER,
+                roundUpAmount INTEGER,
+                boostProportion INTEGER,
+                cashbackDesc TEXT,
+                cashbackAmount INTEGER,
+                amount INTEGER,
+                foreignCurrency TEXT,
+                foreignAmount INTEGER,
+                cardPurchaseMethod TEXT,
+                cardNumberSuffix TEXT,
+                settledAt TEXT,
+                createdAt TEXT,
+                account TEXT,
+                transferAccount TEXT,
+                category TEXT,
+                parentCategory TEXT,
+                PRIMARY KEY (id),
+                FOREIGN KEY (account) REFERENCES Accounts(id),
+                FOREIGN KEY (transferAccount) REFERENCES Accounts(id)
+            )
+            '''
+        )
+
+        # Create the Tags table
+        # DB_CONN.execute(
+        #     '''
+        #     CREATE TABLE IF NOT EXISTS Tags (
+        #         id TEXT,
+        #         transaction TEXT,
+        #         PRIMARY KEY (id),
+        #         FOREIGN KEY (transaction) REFERENCES Transactions(id)
+        #     )
+        #     '''
+        # )
+
+        DB_CONN.commit()
+        cur.close()
+
 
 def write_to_db(table:str, data: pd.DataFrame):
     """
@@ -93,8 +104,8 @@ def write_to_db(table:str, data: pd.DataFrame):
             the specified table. The data should be formatted with the same schema
             as the table it is being inserted into.
     """
-
-    data.to_sql(table, DB_CONN, index=False, if_exists='append')
+    with WRITE:
+        data.to_sql(table, DB_CONN, index=False, if_exists='append')
 
 def read_database(query:str) -> pd.DataFrame:
     """
@@ -117,7 +128,12 @@ def execute_query(query: str) -> None:
     Params:
         query: A string representing the SQL query to be performed on the database.
     """
-    DB_CONN.execute(query)
+    
+    with WRITE:
+        cur = DB_CONN.cursor()
+        cur.execute(query)
+        DB_CONN.commit()
+        cur.close()
 
 def upsert_accounts(data: pd.DataFrame):
     """
