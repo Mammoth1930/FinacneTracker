@@ -50,7 +50,8 @@ Params:
         format "%Y-%m-%dT%H:%M:%S%z".
 
 Returns:
-    The datetime string with 1 second added or None if datetime_string is None.
+    str|None: The datetime string with 1 second added or None if datetime_string
+        is None.
 """
 
   if datetime_string is None:
@@ -62,3 +63,20 @@ Returns:
   new_datetime_string = new_datetime_string[:-2] + ':' + new_datetime_string[-2:]
 
   return new_datetime_string
+
+def str_to_datetime(datetime_string:str) -> datetime.datetime:
+    """
+    Takes a datetime string in "%Y-%m-%dT%H:%M:%S%z" format and converts it to a
+    datetime.datetime object.
+
+    Params:
+        datetime_string: The string representing the datetime object which
+            will be created and returned by the function. It must be of the
+            format "%Y-%m-%dT%H:%M:%S%z".
+    
+    Returns:
+        datetime: A datetime object with the same time properties dictated by
+            the string.
+    """
+
+    return datetime.datetime.strptime(datetime_string, "%Y-%m-%dT%H:%M:%S%z")

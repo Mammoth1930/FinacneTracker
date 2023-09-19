@@ -107,19 +107,20 @@ def write_to_db(table:str, data: pd.DataFrame):
     with WRITE:
         data.to_sql(table, DB_CONN, index=False, if_exists='append')
 
-def read_database(query:str) -> pd.DataFrame:
+def read_database(query:str, params: list|None=None) -> pd.DataFrame:
     """
     Executes an SQL SELECT query on the database and returns the result as a Pandas
     DataFrame. Expects the query to be a part of the DQL.
 
     Params:
         query: A string representing the SQL query to be performed on the database.
+        params: A list of parameter values to be inserted into the SQL query.
 
     Returns:
         pd.DataFrame: Result of the SQL query.
     """
 
-    return pd.read_sql_query(query, DB_CONN)
+    return pd.read_sql_query(query, DB_CONN, params=params)
 
 def execute_query(query: str) -> None:
     """
