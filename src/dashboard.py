@@ -185,7 +185,42 @@ def get_layout() -> html.Div:
 )
 def update_date_range(years: list[str]|None, months: list[str]|None, start: str|None, end: str|None) -> tuple[date, date, date, date|None, date|None]:
     """
+    Updates the date-range-select component based on the input of the 
+    year-select and month-select dropdown components. This function ensures that
+    any date range selected is valid given the years and months selected in the
+    dropdowns and also changes the range of possible dates to select based on
+    the values of the dropdowns.
+
+    Params:
+        years: A list of strings representing the years, in "YYYY" format, which
+            have been selected by the year-select dropdown. If the list is empty
+            or None then this is treated as if all years have been selected.
+        months: A list of strings representing the months, in "MM" format, which
+            have been selected by the month-select dropdown. If the list is empty
+            or None then this is treated as if all months have been selected.
+        start: The start date value of the date-range-select DatePickerRange,
+            represented as a string in "YYYY-MM-DD" format.
+        end: The end date value of the date-range-select DatePickerRange,
+            represented as a string in "YYYY-MM_DD" format.
     
+    Returns:
+        min_date: A datetime.date representing the earliest date inside
+            the restrictions set by the dropdowns on which there was a
+            transaction.
+        max_date: A datetime.date representing the latest date inside
+            the restrictions set by the dropdowns on which there was a
+            transaction.
+        max_date: A datetime.date representing the month the DatePickerRange
+            will initially display when clicked. This is set to the month of the
+            max_date.
+        start_date: A datetime.date to be displayed in the DatePickerRange. If
+            the start parameter was inside the min_date, max_date
+            range then start_date will be that date. Otherwise if start was None
+            or was outside the min_date, max_date range start_date will be None.
+        end_date: A datetime.date to be displayed in the DatePickerRange. If
+            the end parameter was inside the min_date, max_date
+            range then end_date will be that date. Otherwise if end was None
+            or was outside the min_date, max_date range end_date will be None.
     """
 
     # If the user hasn't provided a filter than use all the available years.
