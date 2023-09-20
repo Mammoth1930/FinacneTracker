@@ -5,9 +5,10 @@ This file contains the logic for building the dash app and creating the dashboar
 import pandas as pd
 
 from dash import html, callback, dcc, Input, Output
+from datetime import date
 
 from database import read_database
-from helpers import str_to_datetime
+from helpers import str_to_datetime, check_date_range
 
 COLORS = {
     'bg-1': '#0c0c0c',
@@ -129,7 +130,7 @@ def get_layout() -> html.Div:
             ]),
             html.Hr(),
             html.Div([
-                "Date range",
+                html.Div("Filter Dates"),
                 dcc.DatePickerRange(
                     id='date-range-select',
                     clearable=True,
@@ -142,7 +143,14 @@ def get_layout() -> html.Div:
                         read_database(
                             '''SELECT MAX(createdAt) FROM Transactions'''
                         ).iloc[0][0]
-                    ).date()
+                    ).date(),
+                    initial_visible_month=str_to_datetime(
+                        read_database(
+                            '''SELECT MAX(createdAt) FROM Transactions'''
+                        ).iloc[0][0]
+                    ).date(),
+                    display_format='DD/MM/YYYY',
+                    updatemode='bothdates'
                 )
             ]),
             html.Hr(),
@@ -166,11 +174,16 @@ def get_layout() -> html.Div:
 
 @callback(
     Output('date-range-select', 'min_date_allowed'),
-    Output('date-range-select', 'max-date-allowed'),
+    Output('date-range-select', 'max_date_allowed'),
+    Output('date-range-select', 'initial_visible_month'),
+    Output('date-range-select', 'start_date'),
+    Output('date-range-select', 'end_date'),
     Input('year-select', 'value'),
-    Input('month-select', 'value')
+    Input('month-select', 'value'),
+    Input('date-range-select', 'start_date'),
+    Input('date-range-select', 'end_date')
 )
-def update_date_range(years: list[str], months: list[str]) -> tuple:
+def update_date_range(years: list[str]|None, months: list[str]|None, start: str|None, end: str|None) -> tuple[date, date, date, date|None, date|None]:
     """
     
     """
@@ -205,8 +218,8 @@ def update_date_range(years: list[str], months: list[str]) -> tuple:
             f'''
             SELECT MIN(createdAt)
             FROM Transactions
-            WHERE strftime("%Y", createdAt) = "{min_year}"
-                AND strftime("%m", createdAt) IN ({placeholders})
+            WHERE strftime("%Y", datetime(createdAt, "localtime")) = "{min_year}"
+                AND strftime("%m", datetime(createdAt, "localtime")) IN ({placeholders})
             ''',
             params=months
         ).iloc[0][0]
@@ -217,11 +230,14 @@ def update_date_range(years: list[str], months: list[str]) -> tuple:
             f'''
             SELECT MAX(createdAt)
             FROM Transactions
-            WHERE strftime("%Y", createdAt) = "{max_year}"
-                AND strftime("%m", createdAt) IN ({placeholders})
+            WHERE strftime("%Y", datetime(createdAt, "localtime")) = "{max_year}"
+                AND strftime("%m", datetime(createdAt, "localtime")) IN ({placeholders})
             ''',
             params=months
         ).iloc[0][0]
     ).date()
 
-    return min_date, max_date
+    # Check that the current date-range-select values are withing the min_date, max_date range
+    start_date, end_date = check_date_range(start, end, min_date, max_date)
+
+    return min_date, max_date, max_date, start_date, end_date

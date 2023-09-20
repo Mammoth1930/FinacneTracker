@@ -4,7 +4,7 @@ the other files.
 """
 
 import re
-import datetime
+from datetime import datetime, date, timedelta
 
 def remove_emojis(text: str) -> str:
     """
@@ -57,14 +57,14 @@ Returns:
   if datetime_string is None:
      return None
   
-  datetime_object = datetime.datetime.strptime(datetime_string, "%Y-%m-%dT%H:%M:%S%z")
-  new_datetime_object = datetime_object + datetime.timedelta(seconds=1)
+  datetime_object = datetime.strptime(datetime_string, "%Y-%m-%dT%H:%M:%S%z")
+  new_datetime_object = datetime_object + timedelta(seconds=1)
   new_datetime_string = new_datetime_object.strftime("%Y-%m-%dT%H:%M:%S%z")
   new_datetime_string = new_datetime_string[:-2] + ':' + new_datetime_string[-2:]
 
   return new_datetime_string
 
-def str_to_datetime(datetime_string:str) -> datetime.datetime:
+def str_to_datetime(datetime_string:str) -> datetime:
     """
     Takes a datetime string in "%Y-%m-%dT%H:%M:%S%z" format and converts it to a
     datetime.datetime object.
@@ -79,4 +79,31 @@ def str_to_datetime(datetime_string:str) -> datetime.datetime:
             the string.
     """
 
-    return datetime.datetime.strptime(datetime_string, "%Y-%m-%dT%H:%M:%S%z")
+    return datetime.strptime(datetime_string, "%Y-%m-%dT%H:%M:%S%z")
+
+def check_date_range(start: str|None, end: str|None, min_date: date, max_date: date) -> tuple[date|None, date|None]:
+    """
+    Checks if start and end are between min_date and max_date.
+
+    Params:
+        start: A string in "YYYY-MM-DD" format representing the start date.
+        end: A string in "YYYY-MM-DD" format representing the end date.
+        min_date: A datetime.date representing the minimum possible date.
+        max_date: A datetime.date representing the maximum possible date.
+    
+    Returns:
+        start_date: The start string as a datetime.date if start was not None
+            and it was after the minimum date. None otherwise.
+        end_date: The end string as a datetime.date if the end was not None
+            and it was before the maximum date. None otherwise.
+    """
+    start_date = datetime.strptime(start, "%Y-%m-%d").date() if start else None
+    end_date = datetime.strptime(end, "%Y-%m-%d").date() if end else None
+
+    if start_date and (start_date < min_date or start_date > max_date):
+        start_date = None
+
+    if end_date and (end_date > max_date or end_date < min_date):
+        end_date = None
+    
+    return start_date, end_date
