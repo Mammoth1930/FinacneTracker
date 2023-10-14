@@ -9,6 +9,7 @@ from datetime import date
 
 from database import read_database
 from helpers import str_to_datetime, check_date_range
+from charts import *
 
 COLORS = {
     'bg-1': '#0c0c0c',
@@ -168,7 +169,12 @@ def get_layout() -> html.Div:
                     optionHeight=50,
                     clearable=False
                 )
-            ])
+            ]),
+            html.H4('Income Total'),
+            dcc.Graph(
+                id='income_pie_chart',
+                figure=income_pie_chart('2020-09-23', '2023-10-14')
+            )
         ]
     )
 
