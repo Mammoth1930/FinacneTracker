@@ -2,13 +2,16 @@
 This file contains the logic for building the dash app and creating the dashboard.
 """
 
+import plotly.express as px
 import pandas as pd
 
 from dash import html, callback, dcc, Input, Output
 from datetime import date
+from plotly import graph_objects as go
+from typing import Callable
 
 from database import read_database
-from helpers import str_to_datetime, check_date_range
+from helpers import *
 from charts import *
 
 COLORS = {
@@ -18,6 +21,7 @@ COLORS = {
     'text-1': '#ddd'
 }
 
+# ToDo remove this or move to helpers.py
 def create_table(df: pd.DataFrame, max_rows: int=10) -> html.Table:
     """
 
@@ -32,58 +36,6 @@ def create_table(df: pd.DataFrame, max_rows: int=10) -> html.Table:
         ])
     ])
 
-def get_select_years() -> list[dict[str, str]]:
-    """
-    Gets all of the possible year values for the year-select dropdown. Any year
-    where there was one or more transaction recorded during that year will be
-    returned. An all years option will also always be returned.
-
-    Returns:
-        A list of dictionaries, with each dictionary containing as keys the
-        label and value of the year, which is simply the year in yyyy format as
-        a string for both. Or label = "All", value = "all" for the all years
-        option.
-    """
-
-    res = []
-    years_df = read_database(
-        '''
-        SELECT strftime("%Y", createdAt) AS year
-        FROM Transactions
-        GROUP BY strftime("%Y", createdAt)
-        ORDER BY strftime("%Y", createdAt) DESC
-        '''
-    )
-
-    for i, row in years_df.iterrows():
-        res.append({'label': row['year'], 'value': row['year']})
-
-    return res
-
-def get_select_month() -> list[dict[str, str]]:
-    """
-    
-    """
-
-    res = [
-        {'label': 'January', 'value': '01'},
-        {'label': 'February', 'value': '02'},
-        {'label': 'March', 'value': '03'},
-        {'label': 'April', 'value': '04'},
-        {'label': 'May', 'value': '05'},
-        {'label': 'June', 'value': '06'},
-        {'label': 'July', 'value': '07'},
-        {'label': 'August', 'value': '08'},
-        {'label': 'September', 'value': '09'},
-        {'label': 'October', 'value': '10'},
-        {'label': 'November', 'value': '11'},
-        {'label': 'December', 'value': '12'},
-    ]
-
-    return res
-    
-
-
 def get_layout() -> html.Div:
     """
     Defines the layout of the entire application.
@@ -94,86 +46,126 @@ def get_layout() -> html.Div:
     """
 
     return html.Div(
-        # style={
-        #     'backgroundColor': COLORS['bg-1'],
-        #     'color': COLORS['text-1']
-        # },
+        style={
+            'display': 'flex',
+            'flex-direction': 'row'
+        },
         children=[
-            html.H1(
-                children='Hello World!',
-                # style={
-                #     'textAlign': 'center',
-                #     'color': COLORS['text-1']
-                # }
+            html.Div(
+                style={
+                    'display': 'flex',
+                    'flex-direction': 'column',
+                    'min-width': '336px'
+                },
+                children=[
+                    # Year select dropdown
+                    html.Div([
+                        "Filter Year",
+                        dcc.Dropdown(
+                            id='year-select',
+                            options=get_select_years(),
+                            multi=True,
+                            optionHeight=50
+                        )
+                    ], style={
+                        'padding': '5px 10px'
+                    }),
+                    # Month select dropdown
+                    html.Div([
+                        "Filter Month",
+                        dcc.Dropdown(
+                            id='month-select',
+                            options=get_select_month(),
+                            multi=True,
+                            optionHeight=50
+                        )
+                    ], style={
+                        'padding': '5px 10px'
+                    }),
+                    # Date filter
+                    html.Div([
+                        html.Div("Filter Dates"),
+                        dcc.DatePickerRange(
+                            id='date-range-select',
+                            clearable=True,
+                            min_date_allowed=str_to_datetime(
+                                read_database(
+                                    '''SELECT MIN(createdAt) FROM Transactions'''
+                                ).iloc[0][0]
+                            ).date(),
+                            max_date_allowed=str_to_datetime(
+                                read_database(
+                                    '''SELECT MAX(createdAt) FROM Transactions'''
+                                ).iloc[0][0]
+                            ).date(),
+                            initial_visible_month=str_to_datetime(
+                                read_database(
+                                    '''SELECT MAX(createdAt) FROM Transactions'''
+                                ).iloc[0][0]
+                            ).date(),
+                            display_format='DD/MM/YYYY',
+                            updatemode='bothdates'
+                        )
+                    ], style={
+                        'padding': '5px 10px'
+                    }),
+                    # Group by
+                    html.Div([
+                        "Group By",
+                        dcc.Dropdown(
+                            id='group-select',
+                            options=[
+                                {'label': 'Year', 'value': 'year'},
+                                {'label': 'Quarter', 'value': 'quarter'},
+                                {'label': 'Month', 'value': 'month'},
+                                {'label': 'Day', 'value': 'day'},
+                            ],
+                            value='day',
+                            optionHeight=50,
+                            clearable=False
+                        )
+                    ], style={
+                        'padding': '5px 10px'
+                    }),
+                ]
             ),
-            create_table(read_database('SELECT * FROM Accounts')),
-            html.Hr(),
-            html.Div([
-                "Filter Year",
-                dcc.Dropdown(
-                    id='year-select',
-                    options=get_select_years(),
-                    # value='all',
-                    multi=True,
-                    optionHeight=50
-                )
-            ]),
-            html.Hr(),
-            html.Div([
-                "Filter Month",
-                dcc.Dropdown(
-                    id='month-select',
-                    options=get_select_month(),
-                    # value='all',
-                    multi=True,
-                    optionHeight=50
-                )
-            ]),
-            html.Hr(),
-            html.Div([
-                html.Div("Filter Dates"),
-                dcc.DatePickerRange(
-                    id='date-range-select',
-                    clearable=True,
-                    min_date_allowed=str_to_datetime(
-                        read_database(
-                            '''SELECT MIN(createdAt) FROM Transactions'''
-                        ).iloc[0][0]
-                    ).date(),
-                    max_date_allowed=str_to_datetime(
-                        read_database(
-                            '''SELECT MAX(createdAt) FROM Transactions'''
-                        ).iloc[0][0]
-                    ).date(),
-                    initial_visible_month=str_to_datetime(
-                        read_database(
-                            '''SELECT MAX(createdAt) FROM Transactions'''
-                        ).iloc[0][0]
-                    ).date(),
-                    display_format='DD/MM/YYYY',
-                    updatemode='bothdates'
-                )
-            ]),
-            html.Hr(),
-            html.Div([
-                "Group By",
-                dcc.Dropdown(
-                    id='group-select',
-                    options=[
-                        {'label': 'Year', 'value': 'year'},
-                        {'label': 'Quarter', 'value': 'quarter'},
-                        {'label': 'Month', 'value': 'month'},
-                        {'label': 'Day', 'value': 'day'},
-                    ],
-                    value='day',
-                    optionHeight=50,
-                    clearable=False
-                )
-            ]),
-            html.H4('Income Total'),
-            dcc.Graph(
-                id='income_pie_chart',
-                figure=income_pie_chart('2020-09-23', '2023-10-14')
+            html.Div(
+                style = {
+                    'display': 'flex',
+                    'flex-wrap': 'wrap',
+                    'align-items': 'center',
+                    'justify-content': 'space-evenly'
+                },
+                children=[
+                    # Total income pie chart
+                    html.Div(
+                        style={
+                            'display': 'flex',
+                            'flex-direction': 'column',
+                            'align-items': 'center'
+                        },
+                        children=[
+                            html.H4('Income Total'),
+                            dcc.Graph(
+                                id='income-pie-chart'
+                            ),
+                        ]
+                    ),
+                    # Total spending pie chart
+                    html.Div(
+                        style={
+                            'display': 'flex',
+                            'flex-direction': 'column',
+                            'align-items': 'center'
+                        },
+                        children=[
+                            html.H4('Spending Total'),
+                            dcc.Graph(
+                                id='spending-total-sunburst'
+                            )
+                        ]
+                    )
+                ]
             )
         ]
     )
@@ -189,7 +181,12 @@ def get_layout() -> html.Div:
     Input('date-range-select', 'start_date'),
     Input('date-range-select', 'end_date')
 )
-def update_date_range(years: list[str]|None, months: list[str]|None, start: str|None, end: str|None) -> tuple[date, date, date, date|None, date|None]:
+def update_date_range(
+    years: list[str]|None,
+    months: list[str]|None,
+    start: str|None,
+    end: str|None
+) -> tuple[date, date, date, date|None, date|None]:
     """
     Updates the date-range-select component based on the input of the 
     year-select and month-select dropdown components. This function ensures that
@@ -282,3 +279,156 @@ def update_date_range(years: list[str]|None, months: list[str]|None, start: str|
     start_date, end_date = check_date_range(start, end, min_date, max_date)
 
     return min_date, max_date, max_date, start_date, end_date
+
+###############################################################################
+#################################CHARTS########################################
+###############################################################################
+
+@callback(
+    Output('income-pie-chart', 'figure'),
+    Input('year-select', 'value'),
+    Input('month-select', 'value'),
+    Input('date-range-select', 'start_date'),
+    Input('date-range-select', 'end_date')
+)
+def income_pie_chart(
+    years: list[str]|None, 
+    months: list[str]|None,
+    date_select_start: str|None,
+    date_select_end: str|None
+) -> go.Figure:
+    """
+    
+    """
+    min_date, max_date = get_min_and_max_dates(years, months, date_select_start, date_select_end)
+
+    income_df = read_database(
+        f'''
+            SELECT SUM(amount) as totalAmount, description, isCategorizable
+            FROM transactions
+            WHERE amount > 0
+                AND status = "SETTLED"
+                AND (isCategorizable = 1 OR description LIKE "%interest%")
+                AND settledAt BETWEEN "{min_date}" AND "{max_date}"
+            GROUP BY description
+            ORDER BY SUM(amount) DESC
+        '''
+    )
+
+    # Combine all interest payments into a single sum
+
+    # Get all interest payments
+    interest_payments = income_df[
+        income_df['description'].str.contains('interest', case=False) &
+        (income_df['isCategorizable'] == 0)
+    ]
+    total_interest_amount = interest_payments['totalAmount'].sum()
+    
+    # Remove them from income df
+    income_df = income_df[
+        ~(
+            income_df['description'].str.contains('interest', case=False) &
+            (income_df['isCategorizable'] == 0)
+        )
+    ]
+    
+    # Add in aggregated interest payments
+    income_df = pd.concat(
+        [
+            pd.DataFrame({
+                'totalAmount': [total_interest_amount],
+                'description': ['interest'],
+                'isCategorizable': [1]
+            }),
+            income_df
+        ],
+        ignore_index=True
+    )
+
+    # Formatting of DataFrame for chart
+    income_df.drop(columns=['isCategorizable'], inplace=True)
+    income_df = income_df.sort_values(by='totalAmount', ascending=False).reset_index(drop=True)
+    income_df['totalAmount'] = income_df['totalAmount'] / 100
+
+    # Create the chart
+    fig = go.Figure(data=[
+        go.Pie(
+            labels=income_df['description'],
+            values=income_df['totalAmount'],
+            hole=0.5
+        )
+    ])
+    fig.update_traces(
+        hoverinfo='label+value+percent',
+        textinfo='label+value',
+        textposition='inside',
+    )
+    fig.update_layout(
+        uniformtext_minsize=12,
+        uniformtext_mode='hide',
+        height=600,
+        showlegend=False
+    )
+
+    return fig
+
+
+@callback(
+    Output('spending-total-sunburst', 'figure'),
+    Input('year-select', 'value'),
+    Input('month-select', 'value'),
+    Input('date-range-select', 'start_date'),
+    Input('date-range-select', 'end_date')
+)
+def spending_total_sunburst(
+    years: list[str]|None, 
+    months: list[str]|None,
+    date_select_start: str|None,
+    date_select_end: str|None
+) -> go.Figure:
+    """
+    
+    """
+
+    min_date, max_date = get_min_and_max_dates(years, months, date_select_start, date_select_end)
+
+    # ToDo: Think of a better way to filter out payments to investment account
+    spending_df = read_database(
+        f'''
+            SELECT SUM(amount) as totalAmount, description
+            FROM transactions
+            WHERE amount < 0
+                AND status = "SETTLED"
+                AND settledAt BETWEEN "{min_date}" AND "{max_date}"
+                AND isCategorizable = 1
+                AND description != "CMC Investment Accnt"
+            GROUP BY description
+            ORDER BY SUM(amount) ASC
+        '''
+    )
+
+    # Format DataFrame for chart
+    spending_df['totalAmount'] = spending_df['totalAmount'].abs() / 100
+
+
+    # Create the chart
+    fig = go.Figure(data=[
+        go.Pie(
+            labels=spending_df['description'],
+            values=spending_df['totalAmount'],
+            hole=0.5
+        )
+    ])
+    fig.update_traces(
+        hoverinfo='label+value+percent',
+        textinfo='label+value',
+        textposition='inside',
+    )
+    fig.update_layout(
+        uniformtext_minsize=12,
+        uniformtext_mode='hide',
+        height=600,
+        showlegend=False
+    )
+
+    return fig

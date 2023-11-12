@@ -6,6 +6,8 @@ the other files.
 import re
 from datetime import datetime, date, timedelta
 
+from database import read_database
+
 def remove_emojis(text: str) -> str:
     """
     Removes all emojies and leading/trailing whitespace from a string.
@@ -107,3 +109,123 @@ def check_date_range(start: str|None, end: str|None, min_date: date, max_date: d
         end_date = None
     
     return start_date, end_date
+
+def get_select_years() -> list[dict[str, str]]:
+    """
+    Gets all of the possible year values for the year-select dropdown. Any year
+    where there was one or more transaction recorded during that year will be
+    returned. An all years option will also always be returned.
+
+    Returns:
+        A list of dictionaries, with each dictionary containing as keys the
+        label and value of the year, which is simply the year in yyyy format as
+        a string for both. Or label = "All", value = "all" for the all years
+        option.
+    """
+
+    res = []
+    years_df = read_database(
+        '''
+        SELECT strftime("%Y", createdAt) AS year
+        FROM Transactions
+        GROUP BY strftime("%Y", createdAt)
+        ORDER BY strftime("%Y", createdAt) DESC
+        '''
+    )
+
+    for i, row in years_df.iterrows():
+        res.append({'label': row['year'], 'value': row['year']})
+
+    return res
+
+def get_select_month() -> list[dict[str, str]]:
+    """
+    
+    """
+
+    res = [
+        {'label': 'January', 'value': '01'},
+        {'label': 'February', 'value': '02'},
+        {'label': 'March', 'value': '03'},
+        {'label': 'April', 'value': '04'},
+        {'label': 'May', 'value': '05'},
+        {'label': 'June', 'value': '06'},
+        {'label': 'July', 'value': '07'},
+        {'label': 'August', 'value': '08'},
+        {'label': 'September', 'value': '09'},
+        {'label': 'October', 'value': '10'},
+        {'label': 'November', 'value': '11'},
+        {'label': 'December', 'value': '12'},
+    ]
+
+    return res
+
+def get_min_and_max_dates(
+    years: list[str]|None,
+    months: list[str]|None,
+    date_select_start: str|None,
+    date_select_end: str|None
+):
+    """
+    
+    """
+    if date_select_start is not None and date_select_end is not None:
+        return date_select_start, date_select_end
+
+    # Initialize min_date and max_date with provided date_select_start and date_select_end.
+    min_date, max_date = date_select_start, date_select_end
+
+    # If the user hasn't provided a filter than use all the available years.
+    if years is None or len(years) == 0:
+        min_year = read_database(
+            '''
+            SELECT strftime("%Y", MIN(createdAt))
+            FROM Transactions
+            '''
+        ).iloc[0][0]
+
+        max_year = read_database(
+            '''
+            SELECT strftime("%Y", MAX(createdAt))
+            FROM Transactions
+            '''
+        ).iloc[0][0]
+    else:
+        min_year = min(map(int, years))
+        max_year = max(map(int, years))
+
+    # If the user hasn't provided a filter than use all available months.
+    if months is None or len(months) == 0:
+        months = [month['value'] for month in get_select_month()]
+    
+    placeholders = ','.join(['?' for _ in range(len(months))])
+
+    # Get min_date if it wasn't provided.
+    if min_date is None:
+        min_date = str_to_datetime(
+            read_database(
+                f'''
+                SELECT MIN(createdAt)
+                FROM Transactions
+                WHERE strftime("%Y", datetime(createdAt, "localtime")) = "{min_year}"
+                    AND strftime("%m", datetime(createdAt, "localtime")) IN ({placeholders})
+                ''',
+                params=months
+            ).iloc[0][0]
+        ).date()
+
+    # Get max_date if it wasn't provided.
+    if max_date is None:
+        max_date = str_to_datetime(
+            read_database(
+                f'''
+                SELECT MAX(createdAt)
+                FROM Transactions
+                WHERE strftime("%Y", datetime(createdAt, "localtime")) = "{max_year}"
+                    AND strftime("%m", datetime(createdAt, "localtime")) IN ({placeholders})
+                ''',
+                params=months
+            ).iloc[0][0]
+        ).date()
+
+    return min_date, max_date
